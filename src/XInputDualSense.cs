@@ -171,7 +171,7 @@ internal sealed class XInputDualSense : Form
                 throw new InvalidOperationException("A virtual DualSense is already connected. Close the app that created it, then select Retry.");
 
             currentStatus = "Connecting the virtual DualSense…";
-            using (var session = new DualSenseSession())
+            using (var session = new DualSenseSession(slot))
             {
                 session.Send(pad);
                 var registration = Stopwatch.StartNew();
@@ -180,7 +180,8 @@ internal sealed class XInputDualSense : Form
                     if (stop.WaitHandle.WaitOne(100)) return;
                     if (registration.ElapsedMilliseconds >= 12000)
                         throw new InvalidOperationException("Windows did not find the virtual DualSense. Check USBip-Win2 and select Retry.");
-                    ReadController(ref slot, out pad);
+                    bool connected = ReadController(ref slot, out pad);
+                    session.UpdateRumble(connected ? (uint?)slot : null);
                     session.Send(pad);
                 }
 
@@ -209,6 +210,7 @@ internal sealed class XInputDualSense : Form
                     }
                     session.Send(pad);
                     input.Update(connected, pad);
+                    session.UpdateRumble(connected ? (uint?)slot : null);
                     stop.WaitHandle.WaitOne(connected ? 4 : 150);
                 }
             }
