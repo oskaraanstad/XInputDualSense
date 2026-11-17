@@ -2,6 +2,10 @@
 
 # XInput to DualSense
 
+[![Download for Windows x64](assets/download-windows.svg)](https://github.com/oskaraanstad/XInputDualSense/releases/latest/download/XInputDualSense-win-x64.zip)
+
+[Release notes and previous versions](https://github.com/oskaraanstad/XInputDualSense/releases)
+
 Turn an Xbox-compatible XInput controller into a virtual USB DualSense on Windows. The app detects the first available XInput controller, keeps the virtual device connected through controller reconnects, and removes it when you exit.
 
 ## Getting started
