@@ -22,6 +22,21 @@ internal static class XInputMapping
     [DllImport("xinput1_4.dll", ExactSpelling = true)]
     private static extern uint XInputGetState(uint index, out XInputState state);
 
+    [StructLayout(LayoutKind.Sequential)]
+    private struct Vibration
+    {
+        internal ushort LeftMotorSpeed, RightMotorSpeed;
+    }
+
+    [DllImport("xinput1_4.dll", ExactSpelling = true)]
+    private static extern uint XInputSetState(uint index, ref Vibration vibration);
+
+    internal static bool TrySetVibration(uint slot, ushort left, ushort right)
+    {
+        var vibration = new Vibration { LeftMotorSpeed = left, RightMotorSpeed = right };
+        return XInputSetState(slot, ref vibration) == 0;
+    }
+
     internal const byte TriggerPressThreshold = 30;
     private const ushort Back = 0x0020;
     private const ushort Start = 0x0010;
