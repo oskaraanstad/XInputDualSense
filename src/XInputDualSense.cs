@@ -11,6 +11,7 @@ internal sealed class XInputDualSense : Form
     private const uint NoSlot = 4;
     private readonly CancellationTokenSource shutdown = new CancellationTokenSource();
     private readonly Label status;
+    private readonly InputPreview input = new InputPreview();
     private readonly Button retry;
     private readonly System.Windows.Forms.Timer refresh;
     private const string Waiting = "Waiting for an XInput controller…";
@@ -50,16 +51,17 @@ internal sealed class XInputDualSense : Form
         Font = new Font("Segoe UI", 10);
         AutoScaleMode = AutoScaleMode.Font;
         StartPosition = FormStartPosition.CenterScreen;
-        ClientSize = new Size(470, 208);
+        ClientSize = new Size(470, 272);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         BackColor = Color.White;
 
         var layout = new TableLayoutPanel
         {
-            Dock = DockStyle.Fill, Padding = new Padding(18), ColumnCount = 1, RowCount = 3
+            Dock = DockStyle.Fill, Padding = new Padding(18), ColumnCount = 1, RowCount = 4
         };
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 58));
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         status = new Label
@@ -67,6 +69,12 @@ internal sealed class XInputDualSense : Form
             Dock = DockStyle.Fill, Text = currentStatus,
             BackColor = Color.FromArgb(238, 244, 255), ForeColor = Color.FromArgb(22, 37, 64),
             Padding = new Padding(12), TextAlign = ContentAlignment.MiddleLeft
+        };
+        var buttons = new Label
+        {
+            Dock = DockStyle.Fill, Text = input.ReadText(Stopwatch.GetTimestamp()),
+            BorderStyle = BorderStyle.FixedSingle, Padding = new Padding(10, 4, 10, 4),
+            TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(3, 8, 3, 0)
         };
         var mapping = new Label
         {
@@ -98,14 +106,16 @@ internal sealed class XInputDualSense : Form
         actions.Controls.Add(retry);
         actions.Controls.Add(test);
         layout.Controls.Add(status, 0, 0);
-        layout.Controls.Add(mapping, 0, 1);
-        layout.Controls.Add(actions, 0, 2);
+        layout.Controls.Add(buttons, 0, 1);
+        layout.Controls.Add(mapping, 0, 2);
+        layout.Controls.Add(actions, 0, 3);
         Controls.Add(layout);
 
-        refresh = new System.Windows.Forms.Timer { Interval = 150 };
+        refresh = new System.Windows.Forms.Timer { Interval = 75 };
         refresh.Tick += (sender, args) =>
         {
             status.Text = currentStatus;
+            buttons.Text = input.ReadText(Stopwatch.GetTimestamp());
             retry.Enabled = conversion != null && conversion.IsCompleted;
         };
         Shown += (sender, args) =>
@@ -174,9 +184,20 @@ internal sealed class XInputDualSense : Form
                     session.Send(pad);
                 }
 
+                registration.Restart();
+                bool deviceMissing = false;
                 uint? shownSlot = null;
                 while (!stop.IsCancellationRequested)
                 {
+                    if (registration.ElapsedMilliseconds >= 1000)
+                    {
+                        registration.Restart();
+                        bool present = WindowsDevices.VirtualDualSenseReady();
+                        if (!present && deviceMissing)
+                            throw new InvalidOperationException("The virtual DualSense disconnected. Select Retry to reconnect it.");
+                        deviceMissing = !present;
+                    }
+
                     bool connected = ReadController(ref slot, out pad);
                     uint activeSlot = connected ? slot : NoSlot;
                     if (activeSlot != shownSlot)
@@ -187,6 +208,7 @@ internal sealed class XInputDualSense : Form
                         shownSlot = activeSlot;
                     }
                     session.Send(pad);
+                    input.Update(connected, pad);
                     stop.WaitHandle.WaitOne(connected ? 4 : 150);
                 }
             }
@@ -198,6 +220,10 @@ internal sealed class XInputDualSense : Form
         catch (Exception error)
         {
             currentStatus = error.Message;
+        }
+        finally
+        {
+            input.Update(false, new XInputMapping.Gamepad());
         }
     }
 
