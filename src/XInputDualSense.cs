@@ -171,6 +171,7 @@ internal sealed class XInputDualSense : Form
                 throw new InvalidOperationException("A virtual DualSense is already connected. Close the app that created it, then select Retry.");
 
             currentStatus = "Connecting the virtual DualSense…";
+            using (var inputWait = new ConnectedPollWait(stop.WaitHandle))
             using (var session = new DualSenseSession(slot))
             {
                 session.Send(pad);
@@ -211,7 +212,8 @@ internal sealed class XInputDualSense : Form
                     session.Send(pad);
                     input.Update(connected, pad);
                     session.UpdateRumble(connected ? (uint?)slot : null);
-                    stop.WaitHandle.WaitOne(connected ? 4 : 150);
+                    if (connected) inputWait.Wait();
+                    else stop.WaitHandle.WaitOne(150);
                 }
             }
         }
