@@ -27,6 +27,9 @@ internal static class XInputMapping
     private const ushort LeftStick = 0x0040;
     private const ushort RightStick = 0x0080;
     internal const int ReportLength = 33;
+    internal const int AutomaticSlot = -1;
+    internal const uint NoSlot = 4;
+    internal delegate bool SlotReader(uint slot, out Gamepad pad);
 
     private static readonly ushort[] XInputButtons =
         { 0x4000, 0x1000, 0x2000, 0x8000, 0x0100, 0x0200, Back, Start, LeftStick, RightStick };
@@ -37,6 +40,37 @@ internal static class XInputMapping
         bool connected = XInputGetState(slot, out state) == 0;
         pad = connected ? state.Pad : new Gamepad();
         return connected;
+    }
+
+    internal static bool TryReadController(int requestedSlot, ref uint lastAutoSlot,
+        SlotReader readSlot, out uint activeSlot, out Gamepad pad)
+    {
+        if (requestedSlot != AutomaticSlot)
+        {
+            if (readSlot((uint)requestedSlot, out pad))
+            {
+                activeSlot = (uint)requestedSlot;
+                return true;
+            }
+        }
+        else
+        {
+            if (lastAutoSlot < NoSlot && readSlot(lastAutoSlot, out pad))
+            {
+                activeSlot = lastAutoSlot;
+                return true;
+            }
+            for (uint slot = 0; slot < NoSlot; slot++)
+            {
+                if (slot == lastAutoSlot || !readSlot(slot, out pad)) continue;
+                lastAutoSlot = activeSlot = slot;
+                return true;
+            }
+        }
+
+        activeSlot = NoSlot;
+        pad = new Gamepad();
+        return false;
     }
 
     internal static void Encode(Gamepad pad, byte[] report)

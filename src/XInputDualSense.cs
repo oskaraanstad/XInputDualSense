@@ -8,13 +8,14 @@ using System.Windows.Forms;
 
 internal sealed class XInputDualSense : Form
 {
-    private const uint NoSlot = 4;
+    private static readonly XInputMapping.SlotReader ReadSlot = XInputMapping.TryReadGamepad;
     private readonly CancellationTokenSource shutdown = new CancellationTokenSource();
     private readonly Label status;
     private readonly Button retry;
     private readonly System.Windows.Forms.Timer refresh;
     private const string Waiting = "Waiting for an XInput controller…";
     private volatile string currentStatus = Waiting;
+    private volatile int requestedSlot = XInputMapping.AutomaticSlot;
     private Task conversion;
     private bool canClose;
 
@@ -50,18 +51,40 @@ internal sealed class XInputDualSense : Form
         Font = new Font("Segoe UI", 10);
         AutoScaleMode = AutoScaleMode.Font;
         StartPosition = FormStartPosition.CenterScreen;
-        ClientSize = new Size(470, 208);
+        ClientSize = new Size(470, 254);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         BackColor = Color.White;
 
         var layout = new TableLayoutPanel
         {
-            Dock = DockStyle.Fill, Padding = new Padding(18), ColumnCount = 1, RowCount = 3
+            Dock = DockStyle.Fill, Padding = new Padding(18), ColumnCount = 1, RowCount = 4
         };
+        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        var selection = new FlowLayoutPanel
+        {
+            AutoSize = true, Dock = DockStyle.Fill, WrapContents = false,
+            Margin = new Padding(0, 0, 0, 8)
+        };
+        var sourceLabel = new Label
+        {
+            Text = "XInput source", AutoSize = true, Anchor = AnchorStyles.Left,
+            Margin = new Padding(3, 0, 8, 0)
+        };
+        var source = new ComboBox
+        {
+            AccessibleName = "XInput source", DropDownStyle = ComboBoxStyle.DropDownList, Width = 145
+        };
+        source.Items.Add("Automatic");
+        for (int slot = 1; slot <= XInputMapping.NoSlot; slot++)
+            source.Items.Add("Slot " + slot);
+        source.SelectedIndex = 0;
+        source.SelectedIndexChanged += (sender, args) => requestedSlot = source.SelectedIndex - 1;
+        selection.Controls.Add(sourceLabel);
+        selection.Controls.Add(source);
         status = new Label
         {
             Dock = DockStyle.Fill, Text = currentStatus,
@@ -97,9 +120,10 @@ internal sealed class XInputDualSense : Form
         actions.Controls.Add(close);
         actions.Controls.Add(retry);
         actions.Controls.Add(test);
-        layout.Controls.Add(status, 0, 0);
-        layout.Controls.Add(mapping, 0, 1);
-        layout.Controls.Add(actions, 0, 2);
+        layout.Controls.Add(selection, 0, 0);
+        layout.Controls.Add(status, 0, 1);
+        layout.Controls.Add(mapping, 0, 2);
+        layout.Controls.Add(actions, 0, 3);
         Controls.Add(layout);
 
         refresh = new System.Windows.Forms.Timer { Interval = 150 };
@@ -124,8 +148,8 @@ internal sealed class XInputDualSense : Form
     private void StartConversion()
     {
         if (conversion != null && !conversion.IsCompleted) return;
-        currentStatus = Waiting;
-        status.Text = Waiting;
+        currentStatus = WaitingForController(requestedSlot);
+        status.Text = currentStatus;
         retry.Enabled = false;
         conversion = Task.Run(() => ConvertInput(shutdown.Token));
     }
@@ -149,11 +173,15 @@ internal sealed class XInputDualSense : Form
     {
         try
         {
-            uint slot = NoSlot;
+            uint lastAutoSlot = XInputMapping.NoSlot;
+            uint activeSlot;
+            int selection = requestedSlot;
             XInputMapping.Gamepad pad;
-            while (!ReadController(ref slot, out pad))
+            while (!XInputMapping.TryReadController(selection, ref lastAutoSlot, ReadSlot, out activeSlot, out pad))
             {
+                currentStatus = WaitingForController(selection);
                 if (stop.WaitHandle.WaitOne(150)) return;
+                selection = requestedSlot;
             }
 
             if (stop.IsCancellationRequested) return;
@@ -170,21 +198,23 @@ internal sealed class XInputDualSense : Form
                     if (stop.WaitHandle.WaitOne(100)) return;
                     if (registration.ElapsedMilliseconds >= 12000)
                         throw new InvalidOperationException("Windows did not find the virtual DualSense. Check USBip-Win2 and select Retry.");
-                    ReadController(ref slot, out pad);
+                    XInputMapping.TryReadController(requestedSlot, ref lastAutoSlot, ReadSlot, out activeSlot, out pad);
                     session.Send(pad);
                 }
 
                 uint? shownSlot = null;
+                int? shownSelection = null;
                 while (!stop.IsCancellationRequested)
                 {
-                    bool connected = ReadController(ref slot, out pad);
-                    uint activeSlot = connected ? slot : NoSlot;
-                    if (activeSlot != shownSlot)
+                    selection = requestedSlot;
+                    bool connected = XInputMapping.TryReadController(selection, ref lastAutoSlot, ReadSlot, out activeSlot, out pad);
+                    if (activeSlot != shownSlot || selection != shownSelection)
                     {
-                        currentStatus = connected
-                            ? "Virtual DualSense is ready.\r\nXInput slot " + (slot + 1) + " is connected."
-                            : "Virtual DualSense is ready.\r\nWaiting for the XInput controller to reconnect…";
+                        currentStatus = "Virtual DualSense is ready.\r\n" + (connected
+                            ? "XInput slot " + (activeSlot + 1) + " is connected."
+                            : WaitingForController(selection));
                         shownSlot = activeSlot;
+                        shownSelection = selection;
                     }
                     session.Send(pad);
                     stop.WaitHandle.WaitOne(connected ? 4 : 150);
@@ -201,16 +231,10 @@ internal sealed class XInputDualSense : Form
         }
     }
 
-    private static bool ReadController(ref uint slot, out XInputMapping.Gamepad pad)
+    private static string WaitingForController(int selection)
     {
-        if (slot < NoSlot && XInputMapping.TryReadGamepad(slot, out pad)) return true;
-        for (uint i = 0; i < NoSlot; i++)
-        {
-            if (!XInputMapping.TryReadGamepad(i, out pad)) continue;
-            slot = i;
-            return true;
-        }
-        pad = new XInputMapping.Gamepad();
-        return false;
+        return selection == XInputMapping.AutomaticSlot
+            ? Waiting
+            : "Waiting for an XInput controller in slot " + (selection + 1) + "…";
     }
 }

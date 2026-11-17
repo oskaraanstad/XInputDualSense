@@ -17,6 +17,10 @@ Turn an Xbox-compatible XInput controller into a virtual USB DualSense on Window
 
 Use **Exit** to disconnect the virtual controller. The app runs without administrator privileges once the USB/IP driver is installed.
 
+## Choosing an input controller (development builds)
+
+**XInput source** defaults to **Automatic**, which keeps using the last connected controller while it stays available. Choose **Slot 1** through **Slot 4** to use a specific Windows XInput slot. If the selected controller disconnects, the app keeps the virtual DualSense connected and sends neutral input until that slot comes back. You can change the source without reopening the game.
+
 ## Controller mapping
 
 | XInput | DualSense |

@@ -42,7 +42,7 @@ function Write-Zip([string]$destination, [string]$base, [string[]]$paths) {
 }
 
 $sourceZip = Join-Path $bin 'XInputDualSense-source.zip'
-Write-Zip $sourceZip $root @('src','assets','scripts','vendor','.github','.gitattributes','.gitignore','README.md','LICENSE','THIRD_PARTY_NOTICES.md')
+Write-Zip $sourceZip $root @('src','assets','scripts','tests','vendor','.github','.gitattributes','.gitignore','README.md','LICENSE','THIRD_PARTY_NOTICES.md')
 foreach ($name in 'README.md','LICENSE','THIRD_PARTY_NOTICES.md') {
     Copy-Item -LiteralPath (Join-Path $root $name) -Destination (Join-Path $bin $name) -Force
 }
