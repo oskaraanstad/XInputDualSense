@@ -22,6 +22,7 @@ internal static class XInputMapping
     [DllImport("xinput1_4.dll", ExactSpelling = true)]
     private static extern uint XInputGetState(uint index, out XInputState state);
 
+    internal const byte TriggerPressThreshold = 30;
     private const ushort Back = 0x0020;
     private const ushort Start = 0x0010;
     private const ushort LeftStick = 0x0040;
@@ -66,8 +67,8 @@ internal static class XInputMapping
             if ((buttons & XInputButtons[i]) != 0)
                 mapped |= 1u << bit;
         }
-        if (pad.LeftTrigger > 30) mapped |= 0x400;
-        if (pad.RightTrigger > 30) mapped |= 0x800;
+        if (pad.LeftTrigger > TriggerPressThreshold) mapped |= 0x400;
+        if (pad.RightTrigger > TriggerPressThreshold) mapped |= 0x800;
 
         report[4] = (byte)mapped;
         report[5] = (byte)(mapped >> 8);

@@ -17,6 +17,10 @@ Turn an Xbox-compatible XInput controller into a virtual USB DualSense on Window
 
 Use **Exit** to disconnect the virtual controller. The app runs without administrator privileges once the USB/IP driver is installed.
 
+## Live input preview (development builds)
+
+The status panel shows the active XInput slot and whether Windows has registered the virtual DualSense. **Pressed buttons** shows the physical controller's XInput button names, including trigger presses. This helps confirm that the app sees input before you test the virtual controller in a game.
+
 ## Controller mapping
 
 | XInput | DualSense |
