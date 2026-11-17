@@ -33,7 +33,7 @@ The status panel shows the active XInput slot and whether Windows has registered
 
 The physical controller remains visible in Windows. Some games can register input twice if they read both devices. The app maps one controller at a time. Touchpad gestures, motion, audio-based haptics and adaptive trigger feedback are outside the current mapping.
 
-## Vibration (development builds)
+## Vibration
 
 Ordinary two-motor rumble from the virtual DualSense is forwarded to the active XInput controller if it supports vibration in XInput mode. The game or streaming client must send ordinary rumble reports.
 
