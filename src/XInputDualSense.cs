@@ -2,6 +2,7 @@
 using System;
 using System.Diagnostics;
 using System.Drawing;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -18,6 +19,10 @@ internal sealed class XInputDualSense : Form
     private volatile string currentStatus = Waiting;
     private Task conversion;
     private bool canClose;
+    private volatile int activeXInputSlot = -1;
+    private ButtonProfile profile = ButtonProfile.Default();
+    private readonly string profilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "XInputDualSense", "profile.xml");
 
     [STAThread]
     private static void Main()
@@ -46,12 +51,21 @@ internal sealed class XInputDualSense : Form
 
     private XInputDualSense()
     {
+        try
+        {
+            if (File.Exists(profilePath)) profile = ButtonProfile.Load(profilePath);
+        }
+        catch (Exception error)
+        {
+            MessageBox.Show("Could not load the saved profile. Defaults are active.\r\n" + error.Message, "Button mappings");
+        }
+        XInputMapping.Mapper = new ButtonMapper(profile);
         Text = "XInput to DualSense";
         Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
         Font = new Font("Segoe UI", 10);
         AutoScaleMode = AutoScaleMode.Font;
         StartPosition = FormStartPosition.CenterScreen;
-        ClientSize = new Size(470, 272);
+        ClientSize = new Size(560, 272);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         BackColor = Color.White;
@@ -79,12 +93,22 @@ internal sealed class XInputDualSense : Form
         var mapping = new Label
         {
             AutoSize = true, Margin = new Padding(3, 10, 0, 0),
-            Text = "Select + Start: PS button   |   Select + R3: touchpad click"
+            Text = "Edit button mappings to customize PS, touchpad click and other buttons."
         };
         var actions = new FlowLayoutPanel
         {
             AutoSize = true, Dock = DockStyle.Fill, FlowDirection = FlowDirection.RightToLeft,
             WrapContents = false, Margin = new Padding(0, 10, 0, 0)
+        };
+        var mappings = new Button { Text = "Button mappings", AutoSize = true };
+        mappings.Click += (sender, args) =>
+        {
+            using (var dialog = new MappingDialog(profile, profilePath, () => activeXInputSlot))
+            {
+                if (dialog.ShowDialog(this) != DialogResult.OK) return;
+                profile = dialog.SavedProfile;
+                XInputMapping.Mapper = new ButtonMapper(profile);
+            }
         };
         var close = new Button { Text = "Exit", AutoSize = true };
         retry = new Button { Text = "Retry", AutoSize = true, Enabled = false };
@@ -105,6 +129,7 @@ internal sealed class XInputDualSense : Form
         actions.Controls.Add(close);
         actions.Controls.Add(retry);
         actions.Controls.Add(test);
+        actions.Controls.Add(mappings);
         layout.Controls.Add(status, 0, 0);
         layout.Controls.Add(buttons, 0, 1);
         layout.Controls.Add(mapping, 0, 2);
@@ -227,19 +252,26 @@ internal sealed class XInputDualSense : Form
         }
         finally
         {
+            activeXInputSlot = -1;
             input.Update(false, new XInputMapping.Gamepad());
         }
     }
 
-    private static bool ReadController(ref uint slot, out XInputMapping.Gamepad pad)
+    private bool ReadController(ref uint slot, out XInputMapping.Gamepad pad)
     {
-        if (slot < NoSlot && XInputMapping.TryReadGamepad(slot, out pad)) return true;
+        if (slot < NoSlot && XInputMapping.TryReadGamepad(slot, out pad))
+        {
+            activeXInputSlot = (int)slot;
+            return true;
+        }
         for (uint i = 0; i < NoSlot; i++)
         {
             if (!XInputMapping.TryReadGamepad(i, out pad)) continue;
             slot = i;
+            activeXInputSlot = (int)slot;
             return true;
         }
+        activeXInputSlot = -1;
         pad = new XInputMapping.Gamepad();
         return false;
     }
