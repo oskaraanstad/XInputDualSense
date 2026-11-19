@@ -72,6 +72,23 @@ internal static class ButtonMappingTests
             if (File.Exists(path)) File.Delete(path);
             Directory.Delete(Path.GetDirectoryName(path));
         }
+        var capture = new ButtonCapture();
+        Expect(!capture.Update(true, new XInputMapping.Gamepad { Buttons = 4096 }).HasValue, "Ignore initially held input");
+        Expect(!capture.Update(true, new XInputMapping.Gamepad()).HasValue, "Arm capture on release");
+        Expect(!capture.Update(true, new XInputMapping.Gamepad { Buttons = 32 }).HasValue, "Wait for full combination");
+        Expect(!capture.Update(true, new XInputMapping.Gamepad { Buttons = 48 }).HasValue, "Capture overlapping buttons");
+        Expect(!capture.Update(true, new XInputMapping.Gamepad { Buttons = 16 }).HasValue, "Wait for all buttons released");
+        Expect(capture.Update(true, new XInputMapping.Gamepad()) == 48, "Capture full chord");
+
+        capture = new ButtonCapture();
+        capture.Update(true, new XInputMapping.Gamepad());
+        capture.Update(true, new XInputMapping.Gamepad { LeftTrigger = 31 });
+        capture.Update(false, new XInputMapping.Gamepad());
+        capture.Update(true, new XInputMapping.Gamepad { Buttons = 8192 });
+        Expect(!capture.Update(true, new XInputMapping.Gamepad()).HasValue, "Disconnect cancels partial input");
+        capture.Update(true, new XInputMapping.Gamepad { RightTrigger = 31 });
+        Expect(capture.Update(true, new XInputMapping.Gamepad()) == 131072, "Capture analog trigger");
+
         Console.WriteLine("Button mapping and profile tests passed.");
     }
 

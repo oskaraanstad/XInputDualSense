@@ -23,7 +23,7 @@ The status panel shows the active XInput slot and whether Windows has registered
 
 ## Custom button mappings (development builds)
 
-Choose **Button mappings** to edit a rule or add one. Tick one or more XInput inputs, choose a DualSense output, and select **Add / update**. **Remove selected** removes a rule. Inputs without a matching rule produce no button output. Stick axes keep their normal analog mapping.
+Choose **Button mappings → New rule**, release any held buttons, then press and release the controller button you want to assign. For a combination, hold its buttons together and release them all. Choose a DualSense output and select **Add / update**. To change an existing rule, select it and use **Listen for input** to capture a replacement input. **Remove selected** removes a rule. Inputs without a matching rule produce no button output. Stick axes keep their normal analog mapping.
 
 Longer combinations consume their inputs before single-button rules. Equal-length overlapping combinations use list order. The output stays held while the rule matches. When a combination becomes incomplete, the remaining held inputs use their matching rules.
 

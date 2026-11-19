@@ -7,9 +7,10 @@ $testDir = Join-Path $root 'artifacts\tests'
 $exe = Join-Path $testDir 'ButtonMappingTests.exe'
 $mapping = Join-Path $root 'src\XInputMapping.cs'
 $profile = Join-Path $root 'src\ButtonProfile.cs'
+$capture = Join-Path $root 'src\ButtonCapture.cs'
 $tests = Join-Path $root 'tests\ButtonMappingTests.cs'
 
-& $compiler /nologo /warnaserror /platform:x64 /target:exe "/out:$exe" $mapping $profile $tests
+& $compiler /nologo /warnaserror /platform:x64 /target:exe "/out:$exe" $mapping $profile $capture $tests
 if ($LASTEXITCODE -ne 0) { throw "C# test compilation failed with exit code $LASTEXITCODE." }
 & $exe
 if ($LASTEXITCODE -ne 0) { throw "Button mapping tests failed with exit code $LASTEXITCODE." }

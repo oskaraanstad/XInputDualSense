@@ -19,6 +19,7 @@ internal sealed class XInputDualSense : Form
     private volatile string currentStatus = Waiting;
     private Task conversion;
     private bool canClose;
+    private volatile int activeXInputSlot = -1;
     private ButtonProfile profile = ButtonProfile.Default();
     private readonly string profilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "XInputDualSense", "profile.xml");
@@ -102,7 +103,7 @@ internal sealed class XInputDualSense : Form
         var mappings = new Button { Text = "Button mappings", AutoSize = true };
         mappings.Click += (sender, args) =>
         {
-            using (var dialog = new MappingDialog(profile, profilePath))
+            using (var dialog = new MappingDialog(profile, profilePath, () => activeXInputSlot))
             {
                 if (dialog.ShowDialog(this) != DialogResult.OK) return;
                 profile = dialog.SavedProfile;
@@ -251,19 +252,26 @@ internal sealed class XInputDualSense : Form
         }
         finally
         {
+            activeXInputSlot = -1;
             input.Update(false, new XInputMapping.Gamepad());
         }
     }
 
-    private static bool ReadController(ref uint slot, out XInputMapping.Gamepad pad)
+    private bool ReadController(ref uint slot, out XInputMapping.Gamepad pad)
     {
-        if (slot < NoSlot && XInputMapping.TryReadGamepad(slot, out pad)) return true;
+        if (slot < NoSlot && XInputMapping.TryReadGamepad(slot, out pad))
+        {
+            activeXInputSlot = (int)slot;
+            return true;
+        }
         for (uint i = 0; i < NoSlot; i++)
         {
             if (!XInputMapping.TryReadGamepad(i, out pad)) continue;
             slot = i;
+            activeXInputSlot = (int)slot;
             return true;
         }
+        activeXInputSlot = -1;
         pad = new XInputMapping.Gamepad();
         return false;
     }
