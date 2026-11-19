@@ -21,13 +21,13 @@ Use **Exit** to disconnect the virtual controller. The app runs without administ
 
 The status panel shows the active XInput slot and whether Windows has registered the virtual DualSense. **Pressed buttons** shows the physical controller's XInput button names, including trigger presses. This helps confirm that the app sees input before you test the virtual controller in a game.
 
-## Custom button mappings (development builds)
+## Custom button mappings
 
 Choose **Button mappings → New rule**, release any held buttons, then press and release the controller button you want to assign. For a combination, hold its buttons together and release them all. Choose a DualSense output and select **Add / update**. To change an existing rule, select it and use **Listen for input** to capture a replacement input. **Remove selected** removes a rule. Inputs without a matching rule produce no button output. Stick axes keep their normal analog mapping.
 
 Longer combinations consume their inputs before single-button rules. Equal-length overlapping combinations use list order. The output stays held while the rule matches. When a combination becomes incomplete, the remaining held inputs use their matching rules.
 
-Choose **Save profile** to apply the changes and save them to \`%LOCALAPPDATA%\XInputDualSense\profile.xml\`. The profile loads automatically on startup. Choose **Restore defaults**, then **Save profile**, to return to the default mappings. **Cancel** discards edits.
+Choose **Save profile** to apply the changes and save them to `%LOCALAPPDATA%\XInputDualSense\profile.xml`. The profile loads automatically on startup. Choose **Restore defaults**, then **Save profile**, to return to the default mappings. **Cancel** discards edits.
 
 The menu uses the standard XInput inputs exposed by Windows. An extra physical button that repeats A also uses A's mapping.
 
