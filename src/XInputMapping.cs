@@ -38,14 +38,9 @@ internal static class XInputMapping
     }
 
     internal const byte TriggerPressThreshold = 30;
-    private const ushort Back = 0x0020;
-    private const ushort Start = 0x0010;
-    private const ushort LeftStick = 0x0040;
-    private const ushort RightStick = 0x0080;
     internal const int ReportLength = 33;
 
-    private static readonly ushort[] XInputButtons =
-        { 0x4000, 0x1000, 0x2000, 0x8000, 0x0100, 0x0200, Back, Start, LeftStick, RightStick };
+    internal static volatile ButtonMapper Mapper = new ButtonMapper(ButtonProfile.Default());
 
     internal static bool TryReadGamepad(uint slot, out Gamepad pad)
     {
@@ -62,38 +57,7 @@ internal static class XInputMapping
         report[2] = ToStick(pad.RightX, false);
         report[3] = ToStick(pad.RightY, true);
 
-        int buttons = pad.Buttons;
-        uint mapped = 0;
-        if ((buttons & (Back | Start)) == (Back | Start))
-        {
-            mapped |= 0x10000; // PS
-            buttons &= ~(Back | Start);
-        }
-        else if ((buttons & (Back | RightStick)) == (Back | RightStick))
-        {
-            mapped |= 0x20000; // Touchpad click
-            buttons &= ~(Back | RightStick);
-        }
-
-        for (int i = 0; i < XInputButtons.Length; i++)
-        {
-            // Face and bumper buttons are followed by the digital trigger bits.
-            int bit = i < 6 ? i + 4 : i + 6;
-            if ((buttons & XInputButtons[i]) != 0)
-                mapped |= 1u << bit;
-        }
-        if (pad.LeftTrigger > TriggerPressThreshold) mapped |= 0x400;
-        if (pad.RightTrigger > TriggerPressThreshold) mapped |= 0x800;
-
-        report[4] = (byte)mapped;
-        report[5] = (byte)(mapped >> 8);
-        report[6] = (byte)(mapped >> 16);
-        report[7] = 0;
-        report[8] = (byte)(buttons & 0x0f); // XInput and VIIPER use the same direction bits.
-        report[9] = pad.LeftTrigger;
-        report[10] = pad.RightTrigger;
-        // Touches inactive, gyro zero and a flat controller at rest (AccelZ = -8192).
-        report[32] = 0xe0;
+        Mapper.Encode(pad, report);
     }
 
     private static byte ToStick(short value, bool invert)

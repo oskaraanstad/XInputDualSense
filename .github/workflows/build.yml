@@ -15,6 +15,9 @@ jobs:
       - name: Test vibration forwarding
         shell: powershell
         run: ./scripts/test-rumble.ps1
+      - name: Test button mapping profiles
+        shell: powershell
+        run: ./scripts/test-mappings.ps1
       - name: Build and package
         shell: powershell
         run: ./scripts/build.ps1
